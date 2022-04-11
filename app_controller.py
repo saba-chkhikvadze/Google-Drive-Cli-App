@@ -33,6 +33,8 @@ class DriveAppController:
             elif command == 'create_folder':
                 folder_name = tokens[1]
                 self.brain.create_drive_folder(folder_name)
+            elif command == 'help':
+                self.brain.display_commands()
             else:
                 self.brain.invalid_command_handler()
         except IndexError:

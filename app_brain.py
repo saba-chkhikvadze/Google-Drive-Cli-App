@@ -27,6 +27,9 @@ class DriveAppBrain:
         s = ''
         for file in files:
             self.display_change_listener.display_message(file)
+        
+    def display_commands(self):
+        self.display_change_listener.display_instructions()
 
     def invalid_command_handler(self):
         self.display_change_listener.display_message('invalid command')
