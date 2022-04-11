@@ -14,6 +14,10 @@ class DriveAppController:
     
 
     def trigger_input(self, input : str):
+        '''
+        reads input, tokenizes it and acts accordingly
+        '''
+
         tokens = input.split(' ')
         try:
             command = tokens[0]

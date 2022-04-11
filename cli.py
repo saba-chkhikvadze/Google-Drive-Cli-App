@@ -5,6 +5,9 @@ from ui import UI
 class Cli(UI):
     
     def read_command(self):
+        '''
+        reads user input, passes command to controller (main loop)
+        '''
         self.display_instructions()
         while True:
             command = input('>>> ')
