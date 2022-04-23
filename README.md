@@ -6,5 +6,6 @@
 <ol>
   <li>Clone the repo; 
   <li>Install dependecies using "pip install requirements.txt";
+  <li>Download your credentials.json file from google drive console for your app;
   <li>Run main.py;
 <ol>
