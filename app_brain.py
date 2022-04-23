@@ -25,7 +25,7 @@ class DriveAppBrain:
             self.uploader_object.create_folder_on_drive(folder_name=folder_name)
             self.display_change_listener.display_message(f'Succesfully created folder {folder_name}')
     
-    def upload_file(self, file_name : str, parent_drive_folder : str, folder_path = '.'):
+    def upload_file(self, file_name : str, parent_drive_folder = '*', folder_path = '.'):
         '''
         Upload file with file_name to users google drive
 
@@ -33,13 +33,16 @@ class DriveAppBrain:
         @param parent_drive_folder: name of folder to upload in (google drive folder)
         @param folder_path: absolute path to folder to upload ("." by default)
         '''
-        if not self.uploader_object.exists_folder_on_drive(parent_drive_folder):
+        if parent_drive_folder != '*' and not self.uploader_object.exists_folder_on_drive(parent_drive_folder):
             self.display_change_listener.display_message(f'folder {parent_drive_folder} doesn\'t exist on your drive')
         else:
             if self.uploader_object.upload_file(file_name=file_name, parent_folder_name=parent_drive_folder, file_path=folder_path):
+                
                 self.display_change_listener.display_message(f'Succesfully uploaded file {file_name} to {parent_drive_folder}')
+            else:
+                self.display_change_listener.display_message(f'error while uploading file')
         
-    def get_folders_from_drive(self, num_folders = 1):
+    def get_folders_from_drive(self, num_folders = -1):
         '''
         lists N files/folders from user's google drive
 
@@ -49,6 +52,9 @@ class DriveAppBrain:
         s = ''
         for file in files:
             self.display_change_listener.display_message(file)
+
+    def download_file(self, file_name):
+        self.uploader_object.download_file(file_name = file_name, display = self.display_change_listener)
         
     def display_commands(self):
         '''

@@ -1,11 +1,16 @@
+from dis import dis
+from msilib.schema import File
+import threading
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 import os
-import time
+import io
+
+from listeners.diplay_changed_listener import DisplayChangedListener
 
 class DriveUploader:
     def __init__(self, configs_dir : str) -> None:
@@ -35,8 +40,11 @@ class DriveUploader:
             print(f'An error occurred: {error}')
 
     def list_files(self, size : int):
-        results = self.service.files().list(
-            pageSize = size, fields="nextPageToken, files(id, name)").execute()
+        if size == -1:
+            results = self.service.files().list(fields="nextPageToken, files(id, name)").execute()
+        else:
+            results = self.service.files().list(
+                pageSize = size, fields="nextPageToken, files(id, name)").execute()
         items = results.get('files', [])
         if not items:
             return []
@@ -44,11 +52,22 @@ class DriveUploader:
             return [f'file : {item["name"]}' for item in items]
 
     def exists_folder_on_drive(self, folder_name : str) -> bool:
+        
         response = self.service.files().list(q = f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder'", spaces = 'drive').execute()
         if not response['files']:
             return False
         return True
 
+    def exists_file_on_drive(self, file_name : str) -> bool:
+        results = self.service.files().list(fields="nextPageToken, files(id, name)").execute()
+        if results:
+            items = results.get('files', [])
+            if items:
+                for item in items:
+                    if item['name'] == file_name:
+                        return True, item['id']
+
+        return False
     def create_folder_on_drive(self, folder_name : str) -> bool:
         if not self.exists_folder_on_drive(folder_name=folder_name):
             file_metadata = {
@@ -66,11 +85,25 @@ class DriveUploader:
         print('file doesn\'t exist on drive')
         return None
 
-    def upload_file(self, file_name : str, parent_folder_name : str, file_path = '.', ) -> bool:
-        if not self.exists_folder_on_drive(parent_folder_name):
+    def get_file_id(self, file_name : str) -> str:
+        if self.exists_file_on_drive(file_name = file_name):
+            results = self.service.files().list(fields="nextPageToken, files(id, name)").execute()
+            if results:
+                result_set = results.get('files', None)
+                if result_set:
+                    for file in result_set:
+                        if file['name'] == file_name:
+                            return file['id']
+        return None
+    def upload_file(self, file_name : str, parent_folder_name : str , file_path = '.', ) -> bool:
+        if parent_folder_name != '*' and not self.exists_folder_on_drive(parent_folder_name):
             return False
-        parent_folder_id = self.get_folder_id(parent_folder_name)
+        if parent_folder_name != '*':
+            parent_folder_id = self.get_folder_id(parent_folder_name)
+        else:
+            parent_folder_id = 'root'
         files = os.listdir(file_path)
+        print(files)
         if file_name in files:
             file_metadata = {
                 'name' : file_name,
@@ -84,4 +117,38 @@ class DriveUploader:
                                                     ).execute()
             except HttpError:
                 return False
+        else:
+            return False
         return True 
+
+    
+
+    def save_file(self, request, path, file_name, display : DisplayChangedListener):
+        try:
+            with open(f'{path}/{file_name}', "wb") as ostream:
+                downloader = MediaIoBaseDownload(ostream, request)
+                done = False
+                while not done:
+                    status, done = downloader.next_chunk()
+                    progres_perc = '{0:.2f}'.format(status.progress() * 100)
+                    display.display_message(f'====Download {progres_perc}%====')
+                    display.reset()
+        except:
+            display.display_message(f'error while downloading file {file_name}')
+            display.display_message(f'downloaded file {file_name}')
+
+    def download_file(self, file_name : str, display : DisplayChangedListener, path = './downloads') -> bool:
+
+        if self.exists_file_on_drive(file_name):
+            file_id = self.get_file_id(file_name)
+            try:
+                request = self.service.files().get_media(fileId = file_id)
+                download_thread = threading.Thread(target=self.save_file, args=(request, path, file_name, display))
+                download_thread.daemon = True
+                download_thread.start()
+                display.display_message(f'Strating to download file {file_name}')
+            except:
+                display.display_message('error while downloading')
+                return False
+        else:
+            display.display_message('file doesn\'t exist')

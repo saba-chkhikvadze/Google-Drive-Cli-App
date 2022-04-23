@@ -16,3 +16,6 @@ class DisplayChangedListener(Protocol):
 
     def register_input_listener(self, input_listener : InputListener):
         raise NotImplementedError
+
+    def reset(self):
+        raise NotImplementedError
