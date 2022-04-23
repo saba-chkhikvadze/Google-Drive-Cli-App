@@ -23,7 +23,7 @@ class Cli(UI):
         print('>>> create_folder <folder name>')
 
     def display_message(self, message : str) -> None:
-        print(f'\n<<< {message}')
+        print(f'<<< {message}')
 
     def reset(self):
         print('>>>', end='')
